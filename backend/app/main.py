@@ -97,8 +97,18 @@ def serialize_schedule_payload(data: dict, result: ScheduleResult) -> dict:
         for c in data["companies"]
     ]
 
+    days_count = len(set(s.day for s in data["slots"])) if "slots" in data and data["slots"] else 4
+    summary = {
+        "companies": len(data["companies"]),
+        "students": len(data["students"]),
+        "rooms": len(data["rooms"]),
+        "total_interviews": len(data["interviews"]),
+        "days": days_count,
+    }
+
     return {
         "scheduled": True,
+        "summary": summary,
         "metrics": result.metrics,
         "rooms": serialized_rooms,
         "slots": serialized_slots,
@@ -336,8 +346,17 @@ def state():
     if STATE["data"] is None or STATE["result"] is None:
         if STATE["data"] is not None:
             d = STATE["data"]
+            days_count = len(set(s.day for s in d["slots"])) if "slots" in d and d["slots"] else 4
+            summary = {
+                "companies": len(d["companies"]),
+                "students": len(d["students"]),
+                "rooms": len(d["rooms"]),
+                "total_interviews": len(d["interviews"]),
+                "days": days_count,
+            }
             return {
                 "scheduled": False,
+                "summary": summary,
                 "companies": len(d["companies"]),
                 "students": len(d["students"]),
                 "rooms": len(d["rooms"]),
