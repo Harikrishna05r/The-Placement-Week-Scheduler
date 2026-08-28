@@ -25,6 +25,10 @@ curl -X POST localhost:8000/generate -H "Content-Type: application/json" \
 curl -X POST localhost:8000/schedule
 ```
 
+## Documentation
+
+For full mathematical formulations, architecture diagrams, infeasibility diagnostic rules, and benchmark results, see [DOCUMENTATION.md](DOCUMENTATION.md).
+
 ## STATUS — what's done vs. what's next
 
 **Done and verified:**
@@ -32,36 +36,21 @@ curl -X POST localhost:8000/schedule
   top student on a 35-company/800-student run gets shortlisted by 27 companies;
   demand outstrips capacity — 3,627 interviews vs. 2,560 room-slots — so
   infeasibility is real, not synthetic).
-- CP-SAT solver correctly enforces no-double-booking for students, rooms, and
-  panels, and reports unscheduled interviews with a reason instead of failing
-  silently.
-- FastAPI skeleton boots and round-trips `/generate` → `/schedule`.
+- CP-SAT solver rewritten with interval variables (`model.NewOptionalIntervalVar`,
+  `AddCumulative`, `AddNoOverlap`), solving 3,600+ interviews across 4 days in ~48s.
+- Infeasibility explanation engine (`app/scheduler/explain.py`) implemented: evaluates
+  `room_capacity`, `panel_capacity`, `student_conflict`, and `unknown` in strict hierarchy
+  with human-readable detail strings.
+- FastAPI endpoints (`/generate`, `/schedule`, `/state`) verified live via HTTP.
 
-**Critical next task — solver scalability:**
-The current model represents each interview as one boolean per
-(room, panel, slot) combination. That's correct but explodes combinatorially —
-at full scale (3,600+ interviews) it will not converge in reasonable time.
-**Rewrite `solve_schedule` using CP-SAT interval variables**
-(`model.NewOptionalIntervalVar` per interview, continuous start-time in
-minutes, `model.AddNoOverlap` per room/panel/student track) instead of the
-discrete slot cross-product. This is the standard formulation for
-interview/exam timetabling and should handle the full dataset in seconds,
-not minutes. Do this before building anything else on top of the solver.
-
-**Not yet built (in priority order):**
-1. Fix solver scalability (above).
-2. Implement `/replan` for all four disruption types (company late, panel
+**Not yet built (next steps):**
+1. Implement `/replan` for all four disruption types (company late, panel
    drop, student withdrawal, room unavailable) — reuse `solve_schedule` with
-   a `locked_assignments` argument (already wired into the objective function)
-   so replans are penalized for moving things unnecessarily.
-3. Diff output for replans: `{moved, cancelled, newly_scheduled, unaffected_count}`.
-4. Infeasibility explanation: when interviews can't be scheduled, report
-   *why* (e.g. "room capacity exhausted 2-4pm Day 2") not just "capacity_exhausted".
-5. React dashboard: timeline/Gantt view per room, conflict list, one-click
+   a `locked_assignments` argument so replans minimize disturbance.
+2. Diff output for replans: `{moved, cancelled, newly_scheduled, unaffected_count}`.
+3. React dashboard: timeline/Gantt view per room, conflict list, one-click
    replan button showing the diff before committing.
-6. Write up your metrics (% scheduled, room utilization, student wait time,
-   replan churn) and your constraint-bending policy — the assignment
-   explicitly grades this reasoning, not just the code.
+4. Write up metrics report (`backend/scripts/report.py` and `METRICS.md`).
 
 ## Deploying for the live defense
 

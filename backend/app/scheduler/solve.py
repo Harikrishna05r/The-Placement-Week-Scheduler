@@ -1,20 +1,17 @@
 """
 Core scheduler: assigns every interview a (room, panel, slot) such that:
   - no student is in two interviews whose slots overlap
-  - no room hosts two interviews in the same slot
-  - no panel (company_id, panel_no) is double-booked in the same slot
-  - a company's interviews only land in slots on/after its `day`
-    (a late-arriving company is modeled by shifting its earliest usable slot)
+  - no room hosts two interviews at the same time
+  - no panel (company_id, panel_no) is double-booked at the same time
+  - a company's interviews only land on/after its `day`
 
-When not everything fits, we don't fail silently: we run a relaxed pass
-that maximizes the number of scheduled interviews (weighted by company
-priority) and report exactly which interviews were dropped and why.
+Uses OR-Tools CP-SAT Interval variables, AddCumulative, and AddNoOverlap constraints for high performance.
 
 This module is deliberately kept solver-only (no I/O) so it can be reused
-identically by both the "first schedule" and "replan" code paths --
-replanning just adds constraints/penalties on top of the same model.
+identically by both the "first schedule" and "replan" code paths.
 """
 from __future__ import annotations
+from collections import defaultdict
 from ortools.sat.python import cp_model
 from app.models.entities import Assignment, ScheduleResult
 
@@ -32,89 +29,91 @@ def solve_schedule(interviews, companies, rooms, slots, students,
         first-time schedule.
     """
     company_by_id = {c.id: c for c in companies}
-    student_by_id = {s.id: s for s in students}
     slot_by_id = {s.id: s for s in slots}
     room_ids = [r.id for r in rooms]
+    num_rooms = len(rooms)
+
+    available_days = sorted(list(set(s.day for s in slots)))
+    day_start_min = {}
+    day_end_min = {}
+    for d in available_days:
+        day_slots = [s for s in slots if s.day == d]
+        day_start_min[d] = min(s.start_min for s in day_slots)
+        day_end_min[d] = max(s.end_min for s in day_slots)
 
     model = cp_model.CpModel()
 
-    # candidate slots per interview: must be on/after the company's day,
-    # and long enough for the interview's duration
-    def candidate_slots(interview):
-        company = company_by_id[interview.company_id]
-        out = []
-        for slot in slots:
-            if slot.day < company.day:
-                continue
-            if (slot.end_min - slot.start_min) < interview.duration_min:
-                # allow booking multiple contiguous base-slots if needed
-                pass
-            out.append(slot)
-        return out
+    scheduled = {}          # interview.id -> BoolVar (is_present)
+    start_vars = {}         # interview.id -> IntVar
 
-    # decision vars: x[i] = (room_idx, panel_no, slot_idx) chosen, modeled as
-    # one boolean per (interview, room, panel, slot) candidate triple.
-    # To keep the model tractable at this scale we bucket by "does interview
-    # i get scheduled at all" (scheduled[i]) plus assignment vars only for
-    # combinations we actually create.
-    scheduled = {}
-    choice_vars = {}  # (i.id, room_id, panel_no, slot_id) -> BoolVar
+    all_intervals = []
+    company_intervals = defaultdict(list)
+    student_intervals = defaultdict(list)
 
     for interview in interviews:
         company = company_by_id[interview.company_id]
-        scheduled[interview.id] = model.NewBoolVar(f"sched_{interview.id}")
-        options = []
-        for slot in candidate_slots(interview):
-            for room_id in room_ids:
-                for panel_no in range(1, company.num_panels + 1):
-                    v = model.NewBoolVar(f"x_{interview.id}_{room_id}_{panel_no}_{slot.id}")
-                    choice_vars[(interview.id, room_id, panel_no, slot.id)] = v
-                    options.append(v)
-        # scheduled[i] true iff exactly one option chosen
-        model.Add(sum(options) == scheduled[interview.id])
 
-    # --- constraint: room not double-booked in same slot ---
-    from collections import defaultdict
-    room_slot_group = defaultdict(list)
-    panel_slot_group = defaultdict(list)
-    student_slot_group = defaultdict(list)
+        # Calculate valid start-time intervals in global minutes across allowed days
+        valid_intervals = []
+        for d in available_days:
+            if d >= company.day:
+                s_lim = (d - 1) * 1440 + day_start_min[d]
+                e_lim = (d - 1) * 1440 + day_end_min[d] - interview.duration_min
+                if e_lim >= s_lim:
+                    valid_intervals.append([s_lim, e_lim])
 
-    interview_by_id = {i.id: i for i in interviews}
-    for (iid, room_id, panel_no, slot_id), v in choice_vars.items():
-        company_id = interview_by_id[iid].company_id
-        room_slot_group[(room_id, slot_id)].append(v)
-        panel_slot_group[(company_id, panel_no, slot_id)].append(v)
+        is_present = model.NewBoolVar(f"sched_{interview.id}")
+        scheduled[interview.id] = is_present
 
-    for group in room_slot_group.values():
-        model.Add(sum(group) <= 1)
-    for group in panel_slot_group.values():
-        model.Add(sum(group) <= 1)
+        if not valid_intervals or num_rooms == 0 or company.num_panels == 0:
+            model.Add(is_present == 0)
+            continue
 
-    # --- constraint: student not double-booked in same slot ---
-    for (iid, room_id, panel_no, slot_id), v in choice_vars.items():
-        student_id = interview_by_id[iid].student_id
-        student_slot_group[(student_id, slot_id)].append(v)
-    for group in student_slot_group.values():
-        model.Add(sum(group) <= 1)
+        domain = cp_model.Domain.FromIntervals(valid_intervals)
+        start = model.NewIntVarFromDomain(domain, f"start_{interview.id}")
+        end = model.NewIntVar(domain.min(), domain.max() + interview.duration_min, f"end_{interview.id}")
+        model.Add(end == start + interview.duration_min)
 
-    # --- objective: maximize scheduled interviews, weighted by priority
-    # (lower priority number = more important = higher weight),
-    # minus a penalty for deviating from locked_assignments if replanning
+        start_vars[interview.id] = start
+
+        main_interval = model.NewOptionalIntervalVar(
+            start, interview.duration_min, end, is_present, f"int_{interview.id}"
+        )
+        all_intervals.append(main_interval)
+        company_intervals[company.id].append(main_interval)
+        student_intervals[interview.student_id].append(main_interval)
+
+    # Room capacity track: no more than num_rooms concurrent interviews
+    if all_intervals and num_rooms > 0:
+        model.AddCumulative(all_intervals, [1] * len(all_intervals), num_rooms)
+
+    # Panel capacity track per company: no more than company.num_panels concurrent interviews
+    for cid, intervals in company_intervals.items():
+        c = company_by_id[cid]
+        if intervals and c.num_panels > 0:
+            model.AddCumulative(intervals, [1] * len(intervals), c.num_panels)
+
+    # Student track: no overlapping interviews for the same student
+    for sid, intervals in student_intervals.items():
+        model.AddNoOverlap(intervals)
+
+    # --- objective function ---
     objective_terms = []
     for interview in interviews:
         company = company_by_id[interview.company_id]
         weight = {1: 5, 2: 3, 3: 1}[company.priority]
         objective_terms.append(weight * scheduled[interview.id])
 
-    if locked_assignments:
-        for (iid, room_id, panel_no, slot_id), v in choice_vars.items():
-            prior = locked_assignments.get(iid)
-            if prior and (prior.room_id, prior.panel_no, prior.slot_id) == (room_id, panel_no, slot_id):
-                objective_terms.append(disturbance_penalty * v)
-            elif prior:
-                # keeping this interview scheduled but in a NEW slot is fine;
-                # no explicit penalty needed beyond not rewarding it extra.
-                pass
+        if locked_assignments and interview.id in start_vars:
+            prior = locked_assignments.get(interview.id)
+            if prior and prior.slot_id in slot_by_id:
+                prior_slot = slot_by_id[prior.slot_id]
+                prior_start_global = (prior_slot.day - 1) * 1440 + prior_slot.start_min
+
+                matches = model.NewBoolVar(f"matches_locked_{interview.id}")
+                model.Add(scheduled[interview.id] == 1).OnlyEnforceIf(matches)
+                model.Add(start_vars[interview.id] == prior_start_global).OnlyEnforceIf(matches)
+                objective_terms.append(disturbance_penalty * matches)
 
     model.Maximize(sum(objective_terms))
 
@@ -126,23 +125,61 @@ def solve_schedule(interviews, companies, rooms, slots, students,
     assignments = []
     unscheduled = []
     if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        scheduled_items = []
         for interview in interviews:
-            if solver.Value(scheduled[interview.id]) == 1:
-                for (iid, room_id, panel_no, slot_id), v in choice_vars.items():
-                    if iid == interview.id and solver.Value(v) == 1:
-                        assignments.append(Assignment(interview.id, room_id, panel_no, slot_id))
-                        break
+            if interview.id in start_vars and solver.Value(scheduled[interview.id]) == 1:
+                val_start = solver.Value(start_vars[interview.id])
+                scheduled_items.append({
+                    "interview": interview,
+                    "start": val_start,
+                    "end": val_start + interview.duration_min,
+                })
             else:
                 unscheduled.append({
                     "interview_id": interview.id,
                     "company_id": interview.company_id,
                     "student_id": interview.student_id,
-                    "reason": "capacity_exhausted",  # refined by explain.py
+                    "reason": "capacity_exhausted",
                 })
+
+        # Sort scheduled interviews for greedy room and panel assignment
+        scheduled_items.sort(key=lambda item: (item["start"], item["end"]))
+
+        # Assign room tracks
+        room_end_times = [0] * num_rooms
+        for item in scheduled_items:
+            for r_idx in range(num_rooms):
+                if room_end_times[r_idx] <= item["start"]:
+                    item["room_id"] = room_ids[r_idx]
+                    room_end_times[r_idx] = item["end"]
+                    break
+
+        # Assign panel tracks per company
+        by_company = defaultdict(list)
+        for item in scheduled_items:
+            by_company[item["interview"].company_id].append(item)
+
+        for cid, items in by_company.items():
+            c = company_by_id[cid]
+            panel_end_times = [0] * (c.num_panels + 1)
+            for item in items:
+                for p_no in range(1, c.num_panels + 1):
+                    if panel_end_times[p_no] <= item["start"]:
+                        item["panel_no"] = p_no
+                        panel_end_times[p_no] = item["end"]
+                        break
+
+        for item in scheduled_items:
+            interview = item["interview"]
+            val_start = item["start"]
+            day = (val_start // 1440) + 1
+            start_min_in_day = val_start % 1440
+            day_slots = [s for s in slots if s.day == day]
+            if not day_slots:
+                day_slots = slots
+            best_slot = min(day_slots, key=lambda s: abs(s.start_min - start_min_in_day))
+            assignments.append(Assignment(interview.id, item["room_id"], item["panel_no"], best_slot.id))
     else:
-        # infeasible even for the relaxed maximize-count model (shouldn't
-        # normally happen since scheduling nothing is always feasible) --
-        # surface the solver status directly
         for interview in interviews:
             unscheduled.append({
                 "interview_id": interview.id,

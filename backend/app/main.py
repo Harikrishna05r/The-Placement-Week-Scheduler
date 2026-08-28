@@ -16,6 +16,7 @@ from dataclasses import asdict
 
 from app.generator.generate import generate_dataset
 from app.scheduler.solve import solve_schedule
+from app.scheduler.explain import explain_unscheduled
 
 app = FastAPI(title="Placement Week Scheduler")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -62,6 +63,14 @@ def schedule():
     result = solve_schedule(
         interviews=d["interviews"], companies=d["companies"],
         rooms=d["rooms"], slots=d["slots"], students=d["students"],
+    )
+    result.unscheduled = explain_unscheduled(
+        unscheduled=result.unscheduled,
+        interviews=d["interviews"],
+        companies=d["companies"],
+        rooms=d["rooms"],
+        slots=d["slots"],
+        assignments=result.assignments,
     )
     STATE["result"] = result
     return {"metrics": result.metrics, "unscheduled_sample": result.unscheduled[:10]}
