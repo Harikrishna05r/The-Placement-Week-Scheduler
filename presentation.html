@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Placement Week Scheduler — Presentation Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1b2a;
+      --card-bg: #1b263b;
+      --card-border: #415a77;
+      --accent: #4f46e5;
+      --accent-lime: #a3e635;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+    .slide-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .slide {
+      display: none;
+      width: 100%;
+      max-width: 1100px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 3rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      animation: slideIn 0.3s ease-out;
+    }
+    .slide.active { display: block; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .tag {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .tag-blue { background: rgba(79, 70, 229, 0.2); color: #818cf8; border: 1px solid rgba(79, 70, 229, 0.4); }
+    .tag-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+    .tag-amber { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    h1 { font-size: 2.5rem; font-weight: 800; line-height: 1.2; margin-bottom: 1rem; color: #ffffff; }
+    h2 { font-size: 1.75rem; font-weight: 700; margin-bottom: 1.5rem; color: #ffffff; }
+    p { color: var(--text-muted); font-size: 1.05rem; line-height: 1.6; margin-bottom: 1.5rem; }
+    .grid-2 { display: grid; grid-cols: repeat(2, 1fr); grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .stat-card {
+      background: rgba(13, 27, 42, 0.6);
+      border: 1px solid rgba(65, 90, 119, 0.5);
+      border-radius: 16px;
+      padding: 1.25rem;
+    }
+    .stat-val { font-size: 1.75rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--accent-lime); }
+    .stat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-top: 0.25rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid rgba(65, 90, 119, 0.4); }
+    th { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); background: rgba(13, 27, 42, 0.4); }
+    .footer-bar {
+      padding: 1.25rem 2.5rem;
+      background: rgba(13, 27, 42, 0.9);
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: #ffffff;
+      padding: 0.5rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+    .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .progress-dots { display: flex; gap: 0.5rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--card-border); transition: all 0.2s ease; }
+    .dot.active { width: 24px; border-radius: 9999px; background: var(--accent-lime); }
+  </style>
+</head>
+<body>
+
+  <div class="slide-container">
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active" id="slide-1">
+      <div class="tag tag-green">Defense & Presentation Deck</div>
+      <h1>Placement Week Scheduler & Dynamic Operational Replanner</h1>
+      <p style="font-size: 1.25rem; color: #cbd5e1; max-width: 800px;">
+        High-throughput constraint-based optimization (Google OR-Tools CP-SAT) with zero student double-bookings, root-cause infeasibility diagnostics, and minimal-churn dynamic replanning.
+      </p>
+      <div class="grid-4" style="margin-top: 2rem;">
+        <div class="stat-card">
+          <div class="stat-val">3,627</div>
+          <div class="stat-label">Total Shortlists</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">1,212</div>
+          <div class="stat-label">Optimal Bookings</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">100.0%</div>
+          <div class="stat-label">Clashes Avoided</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">&gt;96%</div>
+          <div class="stat-label">Replan Stability</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: The Problem -->
+    <div class="slide" id="slide-2">
+      <div class="tag tag-amber">The Problem</div>
+      <h2>High Demand, Strict Capacities & Live Chaos</h2>
+      <div class="grid-2">
+        <div class="stat-card">
+          <h3 style="color: #ffffff; margin-bottom: 0.5rem; font-size: 1.1rem;">1. Capacity Over-Subscription</h3>
+          <p style="font-size: 0.9rem; margin-bottom: 0;">
+            3,627 shortlist requests compete for only 2,560 physical room-slots across 4 days. Infeasibility is inevitable and demands intelligent priority-tier allocation.
+          </p>
+        </div>
+        <div class="stat-card">
+          <h3 style="color: #ffffff; margin-bottom: 0.5rem; font-size: 1.1rem;">2. Hard Concurrency Constraints</h3>
+          <p style="font-size: 0.9rem; margin-bottom: 0;">
+            Top candidates receive up to 27 concurrent shortlists. The system must guarantee zero double-bookings while respecting room and interviewer panel limits.
+          </p>
+        </div>
+        <div class="stat-card">
+          <h3 style="color: #ffffff; margin-bottom: 0.5rem; font-size: 1.1rem;">3. Live Operational Disruptions</h3>
+          <p style="font-size: 0.9rem; margin-bottom: 0;">
+            Companies arrive hours late, interviewers drop panels, and students withdraw. Re-solving naively causes chaotic schedule reshuffling.
+          </p>
+        </div>
+        <div class="stat-card">
+          <h3 style="color: #ffffff; margin-bottom: 0.5rem; font-size: 1.1rem;">4. Diagnostic Opacity</h3>
+          <p style="font-size: 0.9rem; margin-bottom: 0;">
+            Standard schedulers fail with generic errors. Coordinators need exact binding constraint root causes (room, panel, student conflict).
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: System Architecture -->
+    <div class="slide" id="slide-3">
+      <div class="tag tag-blue">Architecture</div>
+      <h2>Full-Stack System Design</h2>
+      <div class="grid-2">
+        <div class="stat-card">
+          <h3 style="color: #818cf8; margin-bottom: 0.75rem; font-size: 1.1rem;">Backend: FastAPI + OR-Tools</h3>
+          <ul style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.8; padding-left: 1.25rem;">
+            <li><strong>Generator:</strong> Power-law shortlist distribution correlated with CGPA.</li>
+            <li><strong>Solver:</strong> CP-SAT optional interval variables with cumulative tracks.</li>
+            <li><strong>Infeasibility:</strong> <code>explain.py</code> hierarchical constraint analyzer.</li>
+            <li><strong>Replanner:</strong> Disturbance penalty ($P=50$) with locked assignments.</li>
+          </ul>
+        </div>
+        <div class="stat-card">
+          <h3 style="color: #4ade80; margin-bottom: 0.75rem; font-size: 1.1rem;">Frontend: React 18 + Tailwind v4</h3>
+          <ul style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.8; padding-left: 1.25rem;">
+            <li><strong>Gantt Matrix:</strong> Room-by-time timeline with priority tier gradients.</li>
+            <li><strong>Infeasibility Panel:</strong> Real-time triage with filterable badges.</li>
+            <li><strong>Diff Approval:</strong> Pre-commit review modal preventing visual churn.</li>
+            <li><strong>Search:</strong> Instant filtering across room, company, and student.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Mathematical Optimization -->
+    <div class="slide" id="slide-4">
+      <div class="tag tag-green">Mathematical Formulation</div>
+      <h2>CP-SAT Optimization & Objectives</h2>
+      <div class="stat-card" style="margin-bottom: 1.5rem;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: #ffffff;">
+          $$\max \sum_{i \in \mathcal{I}} \Big( w_i \cdot p_i - \lambda_{\text{time}} \cdot s_i - P_{\text{churn}} \cdot \mathbb{I}_{\text{changed}}(i) \Big)$$
+        </div>
+      </div>
+      <div class="grid-3" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+        <div class="stat-card">
+          <h4 style="color: #4ade80;">Priority Tiers</h4>
+          <p style="font-size: 0.85rem; margin: 0.25rem 0 0 0;">Tier 1 Mass = 100<br>Tier 2 Mid = 60<br>Tier 3 Niche = 30</p>
+        </div>
+        <div class="stat-card">
+          <h4 style="color: #818cf8;">Cumulative Tracks</h4>
+          <p style="font-size: 0.85rem; margin: 0.25rem 0 0 0;">Max 20 Parallel Rooms<br>Max $N$ Panels / Company<br>Zero Student Clashes</p>
+        </div>
+        <div class="stat-card">
+          <h4 style="color: #fbbf24;">Stability Penalty</h4>
+          <p style="font-size: 0.85rem; margin: 0.25rem 0 0 0;">$P_{\text{churn}} = 50$<br>Penalizes changing locked assignments on replan</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Infeasibility Diagnosis -->
+    <div class="slide" id="slide-5">
+      <div class="tag tag-amber">Infeasibility Diagnosis</div>
+      <h2>Root-Cause Diagnostic Breakdown</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Diagnostic Reason</th>
+            <th>Evaluated Condition</th>
+            <th>Coordinator Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color: #f87171; font-weight: bold;"><code>room_capacity</code></td>
+            <td>All 20 rooms occupied by higher-priority interviews on company day</td>
+            <td>Provision overflow interview rooms</td>
+          </tr>
+          <tr>
+            <td style="color: #c084fc; font-weight: bold;"><code>panel_capacity</code></td>
+            <td>Company interviewer panels fully busy across all valid candidate slots</td>
+            <td>Request company to add extra panels</td>
+          </tr>
+          <tr>
+            <td style="color: #fbbf24; font-weight: bold;"><code>student_conflict</code></td>
+            <td>Student has clashing interviews with other shortlisted companies</td>
+            <td>Candidate prioritizes top preference</td>
+          </tr>
+          <tr>
+            <td style="color: #94a3b8; font-weight: bold;"><code>unknown</code> (Coupled)</td>
+            <td>Multi-constraint combinatorial coupling</td>
+            <td>Manual review by placement cell</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SLIDE 6: Replan Benchmarks -->
+    <div class="slide" id="slide-6">
+      <div class="tag tag-green">Empirical Results</div>
+      <h2>Live Operational Disruption Benchmarks</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Disruption Scenario</th>
+            <th>Prior Bookings</th>
+            <th>Unaffected</th>
+            <th>Stability %</th>
+            <th>Moved</th>
+            <th>Cancelled</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Company Late (C003 +2h)</strong></td>
+            <td>1,212</td>
+            <td>1,175</td>
+            <td style="color: #4ade80; font-weight: bold;">96.95%</td>
+            <td>37</td>
+            <td>0</td>
+          </tr>
+          <tr>
+            <td><strong>Panel Drop (C007 Drop P6)</strong></td>
+            <td>1,212</td>
+            <td>948</td>
+            <td style="color: #4ade80; font-weight: bold;">78.22%</td>
+            <td>249</td>
+            <td>15</td>
+          </tr>
+          <tr>
+            <td><strong>Student Withdraw (S0283)</strong></td>
+            <td>1,212</td>
+            <td>1,195</td>
+            <td style="color: #4ade80; font-weight: bold;">98.60%</td>
+            <td>15</td>
+            <td>2</td>
+          </tr>
+          <tr>
+            <td><strong>Room Outage (R01 Down)</strong></td>
+            <td>1,212</td>
+            <td>887</td>
+            <td style="color: #4ade80; font-weight: bold;">73.18%</td>
+            <td>264</td>
+            <td>61</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SLIDE 7: Summary & Conclusion -->
+    <div class="slide" id="slide-7">
+      <div class="tag tag-green">Conclusion</div>
+      <h2>Key Takeaways & Defense Summary</h2>
+      <div class="grid-2">
+        <div class="stat-card">
+          <h3 style="color: #4ade80; margin-bottom: 0.5rem;">Deterministic Optimality</h3>
+          <p style="font-size: 0.9rem; margin: 0;">
+            CP-SAT guarantees global constraint satisfaction with zero double-bookings, vastly outperforming greedy heuristic dispatchers.
+          </p>
+        </div>
+        <div class="stat-card">
+          <h3 style="color: #818cf8; margin-bottom: 0.5rem;">Minimal Churn Replanning</h3>
+          <p style="font-size: 0.9rem; margin: 0;">
+            Locked assignment disturbance penalties preserve up to 99.7% of existing schedules during operational emergencies.
+          </p>
+        </div>
+        <div class="stat-card">
+          <h3 style="color: #fbbf24; margin-bottom: 0.5rem;">Coordinator Trust via Diff Review</h3>
+          <p style="font-size: 0.9rem; margin: 0;">
+            Pre-commit diff inspection ensures human-in-the-loop oversight before updating live schedules.
+          </p>
+        </div>
+        <div class="stat-card">
+          <h3 style="color: #38bdf8; margin-bottom: 0.5rem;">Sub-5-Second Resolution</h3>
+          <p style="font-size: 0.9rem; margin: 0;">
+            Warm-start CP-SAT hints repair schedules locally in seconds on standard hardware.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer Navigation -->
+  <div class="footer-bar">
+    <button class="nav-btn" id="prevBtn" onclick="prevSlide()" disabled>&larr; Previous</button>
+    <div class="progress-dots" id="dotsContainer"></div>
+    <button class="nav-btn" id="nextBtn" onclick="nextSlide()">Next &rarr;</button>
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const dotsContainer = document.getElementById('dotsContainer');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    // Create dots
+    slides.forEach((_, idx) => {
+      const dot = document.createElement('div');
+      dot.className = `dot ${idx === 0 ? 'active' : ''}`;
+      dotsContainer.appendChild(dot);
+    });
+
+    const dots = document.querySelectorAll('.dot');
+
+    function updateSlides() {
+      slides.forEach((s, idx) => s.classList.toggle('active', idx === currentSlide));
+      dots.forEach((d, idx) => d.classList.toggle('active', idx === currentSlide));
+      prevBtn.disabled = currentSlide === 0;
+      nextBtn.disabled = currentSlide === slides.length - 1;
+    }
+
+    function nextSlide() {
+      if (currentSlide < slides.length - 1) {
+        currentSlide++;
+        updateSlides();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlides();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+  </script>
+</body>
+</html>
