@@ -1,266 +1,250 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Clock, CalendarDays, Filter, ChevronRight, User, Building, Shield } from 'lucide-react';
+import { Search, Info, Check, Filter } from 'lucide-react';
 
-export default function GanttChart({ rooms, slots, assignments, onSelectInterview }) {
+export default function GanttChart({
+  rooms = [],
+  slots = [],
+  assignments = [],
+  searchFilter = '',
+  onSelectInterview,
+}) {
   const [selectedDay, setSelectedDay] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [localSearch, setLocalSearch] = useState('');
   const [filterTier, setFilterTier] = useState('all');
 
-  // Group slots by day
-  const slotsByDay = useMemo(() => {
-    const map = {};
-    for (const s of slots) {
-      if (!map[s.day]) map[s.day] = [];
-      map[s.day].push(s);
-    }
-    for (const day in map) {
-      map[day].sort((a, b) => a.start_min - b.start_min);
-    }
-    return map;
+  const effectiveSearch = searchFilter || localSearch;
+
+  // Derive unique days
+  const availableDays = useMemo(() => {
+    const days = Array.from(new Set(slots.map((s) => s.day))).sort((a, b) => a - b);
+    return days.length > 0 ? days : [1, 2, 3, 4];
   }, [slots]);
 
-  const availableDays = useMemo(() => {
-    const days = Object.keys(slotsByDay).map(Number).sort((a, b) => a - b);
-    return days.length > 0 ? days : [1, 2, 3, 4, 5];
-  }, [slotsByDay]);
-
-  const currentSlots = useMemo(() => {
+  // Filter slots by selected day
+  const filteredSlots = useMemo(() => {
     if (selectedDay === 'all') return slots;
-    return slotsByDay[selectedDay] || [];
-  }, [selectedDay, slotsByDay, slots]);
+    return slots.filter((s) => s.day === selectedDay);
+  }, [slots, selectedDay]);
 
-  // Index assignments by (room_id, slot_id)
+  // Fast mapping of assignments by (room_id, slot_id)
   const assignmentGrid = useMemo(() => {
-    const grid = {};
+    const map = {};
     for (const a of assignments) {
       const key = `${a.room_id}_${a.slot_id}`;
-      grid[key] = a;
+      map[key] = a;
     }
-    return grid;
+    return map;
   }, [assignments]);
 
-  const formatTime = (min) => {
-    const h = Math.floor(min / 60);
-    const m = min % 60;
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const displayH = h > 12 ? h - 12 : h;
-    return `${displayH}:${m.toString().padStart(2, '0')} ${ampm}`;
+  const formatTime = (minutes) => {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const period = hrs >= 12 ? 'PM' : 'AM';
+    const displayHrs = hrs > 12 ? hrs - 12 : hrs === 0 ? 12 : hrs;
+    const displayMins = mins < 10 ? `0${mins}` : mins;
+    return `${displayHrs}:${displayMins} ${period}`;
   };
 
   const getTierClass = (priority) => {
-    if (priority === 1) return 'tier-1';
-    if (priority === 2) return 'tier-2';
-    return 'tier-3';
+    if (priority === 1) return 'cell-tier-1';
+    if (priority === 3) return 'cell-tier-3';
+    return 'cell-tier-2';
   };
 
-  const filteredAssignmentsCount = useMemo(() => {
-    if (!searchQuery && filterTier === 'all') return assignments.length;
-    return assignments.filter((a) => {
-      const matchSearch =
-        !searchQuery ||
-        a.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.company_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.student_id.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchTier = filterTier === 'all' || a.priority === Number(filterTier);
-      return matchSearch && matchTier;
-    }).length;
-  }, [assignments, searchQuery, filterTier]);
-
   return (
-    <div className="glass-panel p-5 rounded-2xl shadow-2xl border border-slate-800 mb-6">
-      {/* Header controls */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-5 pb-4 border-b border-slate-800/80">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-base font-bold font-display text-white tracking-tight">
-              Room-by-Time Gantt Timeline
-            </h2>
-            <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-slate-800 text-indigo-300 border border-indigo-500/20">
-              {assignments.length} Total Bookings
-            </span>
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-8 shadow-sm">
+      {/* Top Header: Title, Controls, Priority Tier Legend (CENTERED) */}
+      <div className="pb-4 border-b border-slate-100 text-center flex flex-col items-center justify-center">
+        <h2 className="text-lg font-bold font-display text-slate-900 flex items-center justify-center gap-2 text-center">
+          <span>Room-by-Time Gantt Matrix</span>
+          <span className="text-xs font-mono font-medium text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+            {assignments.length} Scheduled
+          </span>
+        </h2>
+        <p className="text-xs text-slate-500 mt-1 text-center max-w-xl mx-auto">
+          15-minute slot intervals across 20 parallel interview rooms. Click any booking block to inspect details.
+        </p>
+
+        {/* Priority Tier Legend (CENTERED) */}
+        <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs mt-3">
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mr-1">Legend:</span>
+          
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cell-tier-1 text-[11px] font-semibold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-600" />
+            <span>Tier 1 (Mass)</span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Interactive room allocation matrix. Hover or click an interview card for full panel details.
-          </p>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cell-tier-2 text-[11px] font-semibold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-blue-600" />
+            <span>Tier 2 (Mid)</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cell-tier-3 text-[11px] font-semibold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-purple-600" />
+            <span>Tier 3 (Niche)</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed border-slate-300 text-slate-500 text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-slate-300" />
+            <span>Available Room</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter and Day Selector Toolbar (CENTERED) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-center gap-4 py-3 border-b border-slate-100">
+        {/* Day Selector Pills */}
+        <div className="flex items-center justify-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+          {availableDays.map((day) => (
+            <button
+              key={day}
+              onClick={() => setSelectedDay(day)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                selectedDay === day
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Day {day}
+            </button>
+          ))}
+          <button
+            onClick={() => setSelectedDay('all')}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              selectedDay === 'all'
+                ? 'bg-white text-indigo-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            All Days
+          </button>
         </div>
 
-        {/* Filters & Day Tabs */}
-        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          {/* Search box */}
-          <div className="relative flex-1 sm:w-56">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search company / student..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950/80 border border-slate-700/70 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-            />
-          </div>
-
-          {/* Tier Filter */}
+        {/* Tier Filter */}
+        <div className="flex items-center justify-center gap-2">
           <select
             value={filterTier}
             onChange={(e) => setFilterTier(e.target.value)}
-            className="bg-slate-950/80 border border-slate-700/70 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 transition-colors"
           >
-            <option value="all">All Tiers</option>
-            <option value="1">Tier 1 (Mass / High Priority)</option>
-            <option value="2">Tier 2 (Mid Tier)</option>
-            <option value="3">Tier 3 (Niche Tier)</option>
+            <option value="all">All Priority Tiers</option>
+            <option value="1">Tier 1 (Mass)</option>
+            <option value="2">Tier 2 (Mid)</option>
+            <option value="3">Tier 3 (Niche)</option>
           </select>
-
-          {/* Day Selector Pills */}
-          <div className="flex items-center bg-slate-950/90 rounded-lg p-1 border border-slate-800">
-            {availableDays.map((day) => (
-              <button
-                key={day}
-                onClick={() => setSelectedDay(day)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${selectedDay === day
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                  }`}
-              >
-                Day {day}
-              </button>
-            ))}
-            <button
-              onClick={() => setSelectedDay('all')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${selectedDay === 'all'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                }`}
-            >
-              Full Week
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Legend Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 mb-4 px-1">
-        <div className="flex items-center gap-4">
-          <span className="font-semibold text-slate-300">Priority Legend:</span>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm tier-1 inline-block" />
-            <span className="text-slate-300">Tier 1 (Mass / P1)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm tier-2 inline-block" />
-            <span className="text-slate-300">Tier 2 (Mid / P2)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm tier-3 inline-block" />
-            <span className="text-slate-300">Tier 3 (Niche / P3)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm free-slot border border-slate-700 inline-block" />
-            <span className="text-slate-400">Available Room</span>
-          </div>
-        </div>
+      {/* Gantt Grid Table Container */}
+      <div className="overflow-x-auto mt-4 border border-slate-200 rounded-xl max-h-[600px] overflow-y-auto">
+        <div className="min-w-max">
+          {/* Header Row: Room label + Time Slots */}
+          <div className="sticky top-0 z-20 flex bg-slate-50 border-b border-slate-200">
+            {/* Sticky Room Label Header */}
+            <div className="sticky left-0 z-30 w-24 shrink-0 bg-slate-100 border-r border-slate-200 px-3 py-2 text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-center">
+              Room
+            </div>
 
-        {searchQuery && (
-          <span className="text-xs text-indigo-400 font-medium">
-            Filtering matching: {filteredAssignmentsCount} interviews
-          </span>
-        )}
-      </div>
-
-      {/* Timeline Scrollable Grid Container */}
-      <div className="overflow-x-auto overflow-y-auto max-h-[640px] rounded-xl border border-slate-800 bg-slate-950/60 shadow-inner">
-        <table className="w-full border-collapse text-left">
-          {/* Header row with time slots */}
-          <thead>
-            <tr>
-              <th className="room-cell-header p-3 text-xs font-bold text-slate-300 uppercase tracking-wider min-w-[130px] border-b-2 border-slate-700 bg-slate-900/95">
-                Room
-              </th>
-              {currentSlots.map((slot) => (
-                <th
+            {/* Time Slot Columns */}
+            <div className="flex">
+              {filteredSlots.map((slot) => (
+                <div
                   key={slot.id}
-                  className="slot-cell-header p-2 text-center text-[11px] font-semibold text-slate-400 min-w-[110px] max-w-[130px] border-l border-slate-800/80 bg-slate-900/95"
+                  className="w-32 shrink-0 border-r border-slate-200 px-2 py-1.5 text-center bg-slate-50"
                 >
-                  <div className="font-mono text-slate-300 font-bold">{formatTime(slot.start_min)}</div>
-                  <div className="text-[10px] text-slate-500 font-medium">
-                    {selectedDay === 'all' ? `D${slot.day} ` : ''}Slot {slot.id.split('-')[1]}
+                  <div className="text-[11px] font-bold font-mono text-slate-800 tabular-nums">
+                    {formatTime(slot.start_min)}
                   </div>
-                </th>
+                  <div className="text-[9px] font-mono text-slate-500">
+                    D{slot.day} · {slot.id}
+                  </div>
+                </div>
               ))}
-            </tr>
-          </thead>
+            </div>
+          </div>
 
-          {/* Rows per room */}
-          <tbody>
-            {rooms.map((room) => (
-              <tr key={room.id} className="hover:bg-slate-900/40 transition-colors">
-                {/* Sticky room label */}
-                <td className="room-cell-header p-3 text-xs font-semibold text-white whitespace-nowrap bg-slate-900/90 shadow-md">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-400" />
-                    <div>
-                      <div className="font-bold text-slate-200">{room.name}</div>
-                      <div className="text-[10px] text-slate-400 font-normal">{room.id}</div>
-                    </div>
-                  </div>
-                </td>
+          {/* Body Rows: Rooms R01 to R20 */}
+          {rooms.map((room) => (
+            <div
+              key={room.id}
+              className="flex border-b border-slate-100 hover:bg-slate-50/40 transition-colors"
+            >
+              {/* Sticky Room ID Cell */}
+              <div className="sticky left-0 z-10 w-24 shrink-0 bg-white border-r border-slate-200 px-3 py-2 flex flex-col justify-center items-center shadow-[1px_0_3px_rgba(0,0,0,0.03)]">
+                <span className="font-mono font-bold text-xs text-slate-900">
+                  {room.id}
+                </span>
+                <span className="text-[9px] text-slate-400 font-medium">
+                  Cap {room.capacity || 1}
+                </span>
+              </div>
 
-                {/* Slots in room */}
-                {currentSlots.map((slot) => {
+              {/* Slots for this room */}
+              <div className="flex">
+                {filteredSlots.map((slot) => {
                   const key = `${room.id}_${slot.id}`;
                   const booking = assignmentGrid[key];
 
-                  const isHighlighted =
-                    booking &&
-                    (!searchQuery ||
-                      booking.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      booking.company_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      booking.student_id.toLowerCase().includes(searchQuery.toLowerCase())) &&
-                    (filterTier === 'all' || booking.priority === Number(filterTier));
+                  // Check search filter match
+                  const isMatch =
+                    !effectiveSearch ||
+                    (booking &&
+                      (booking.company_name?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+                        booking.company_id?.toLowerCase().includes(effectiveSearch.toLowerCase()) ||
+                        booking.student_id?.toLowerCase().includes(effectiveSearch.toLowerCase())));
 
-                  return (
-                    <td
-                      key={slot.id}
-                      className="p-1 border-l border-b border-slate-800/60 min-w-[110px] max-w-[130px] h-[58px] align-top"
-                    >
-                      {booking ? (
-                        <div
+                  const isTierMatch =
+                    filterTier === 'all' ||
+                    (booking && String(booking.priority) === filterTier);
+
+                  if (booking) {
+                    const tierClass = getTierClass(booking.priority);
+                    const opacityClass = isMatch && isTierMatch ? 'opacity-100' : 'opacity-20';
+
+                    return (
+                      <div
+                        key={slot.id}
+                        className="w-32 shrink-0 p-1 border-r border-slate-100 flex items-center justify-center"
+                      >
+                        <button
                           onClick={() => onSelectInterview(booking)}
-                          className={`interview-slot-block h-full flex flex-col justify-between ${getTierClass(
-                            booking.priority
-                          )} ${isHighlighted
-                              ? 'ring-2 ring-indigo-400/80 shadow-lg'
-                              : 'opacity-30 filter grayscale'
-                            }`}
-                          title={`Click to view: ${booking.company_name} | Student ${booking.student_id} | Panel ${booking.panel_no}`}
+                          className={`w-full h-12 rounded-lg p-1.5 text-left transition-all ${tierClass} ${opacityClass} hover:shadow-md hover:scale-[1.03] cursor-pointer flex flex-col justify-between`}
+                          title={`Interview: ${booking.interview_id}\nCompany: ${booking.company_name || booking.company_id}\nCandidate: ${booking.student_id}\nPanel: P${booking.panel_no}`}
                         >
-                          <div className="flex items-center justify-between gap-1 overflow-hidden">
-                            <span className="font-bold truncate text-[11px]">
+                          <div className="flex items-center justify-between gap-1 leading-tight">
+                            <span className="font-bold text-[11px] truncate">
                               {booking.company_name || booking.company_id}
                             </span>
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-black/30 font-mono font-semibold shrink-0">
+                            <span className="text-[9px] font-mono font-bold px-1 rounded bg-white/60 shrink-0">
                               P{booking.panel_no}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between text-[10px] text-white/90 font-mono">
-                            <span className="truncate">{booking.student_id}</span>
-                            <span className="text-[9px] opacity-80">{booking.duration_min}m</span>
+
+                          <div className="flex items-center justify-between text-[10px] font-mono leading-tight">
+                            <span className="font-medium opacity-90">{booking.student_id}</span>
+                            <span className="text-[9px] opacity-75">{booking.duration_min}m</span>
                           </div>
-                        </div>
-                      ) : (
-                        <div
-                          className="free-slot h-full flex items-center justify-center text-[10px] text-slate-600 hover:text-slate-400 cursor-default"
-                          title="Room is free in this time slot"
-                        >
-                          <span className="opacity-40 hover:opacity-100 font-mono text-[9px]">+ Free</span>
-                        </div>
-                      )}
-                    </td>
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  // Empty Slot (Free Room)
+                  return (
+                    <div
+                      key={slot.id}
+                      className="w-32 shrink-0 p-1 border-r border-slate-100 flex items-center justify-center"
+                    >
+                      <div className="w-full h-12 rounded-lg cell-free-room flex items-center justify-center text-[10px] font-medium select-none">
+                        <span>+ Free</span>
+                      </div>
+                    </div>
                   );
                 })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
