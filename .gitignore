@@ -39,9 +39,11 @@ scratch/
 .idea/
 *.swp
 
-# OS files
+# OS & temp files
 .DS_Store
 Thumbs.db
+~$*
+*.tmp
 
 # Frontend
 node_modules/
