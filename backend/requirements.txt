@@ -1,0 +1,6 @@
+fastapi==0.141.1
+uvicorn==0.52.4
+ortools==9.15.6755
+faker==40.37.0
+numpy
+pydantic==2.13.4
