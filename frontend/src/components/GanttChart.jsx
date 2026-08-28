@@ -116,22 +116,20 @@ export default function GanttChart({ rooms, slots, assignments, onSelectIntervie
               <button
                 key={day}
                 onClick={() => setSelectedDay(day)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  selectedDay === day
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${selectedDay === day
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                }`}
+                  }`}
               >
                 Day {day}
               </button>
             ))}
             <button
               onClick={() => setSelectedDay('all')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                selectedDay === 'all'
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${selectedDay === 'all'
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
+                }`}
             >
               Full Week
             </button>
@@ -229,11 +227,10 @@ export default function GanttChart({ rooms, slots, assignments, onSelectIntervie
                           onClick={() => onSelectInterview(booking)}
                           className={`interview-slot-block h-full flex flex-col justify-between ${getTierClass(
                             booking.priority
-                          )} ${
-                            isHighlighted
+                          )} ${isHighlighted
                               ? 'ring-2 ring-indigo-400/80 shadow-lg'
                               : 'opacity-30 filter grayscale'
-                          }`}
+                            }`}
                           title={`Click to view: ${booking.company_name} | Student ${booking.student_id} | Panel ${booking.panel_no}`}
                         >
                           <div className="flex items-center justify-between gap-1 overflow-hidden">

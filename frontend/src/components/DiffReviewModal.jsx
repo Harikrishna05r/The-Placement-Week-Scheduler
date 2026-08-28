@@ -130,33 +130,30 @@ export default function DiffReviewModal({
           <button
             id="tab-diff-moved"
             onClick={() => setActiveTab('moved')}
-            className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all ${
-              activeTab === 'moved'
+            className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all ${activeTab === 'moved'
                 ? 'border-amber-400 text-amber-300'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             Moved Interviews ({moved.length})
           </button>
           <button
             id="tab-diff-cancelled"
             onClick={() => setActiveTab('cancelled')}
-            className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all ${
-              activeTab === 'cancelled'
+            className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all ${activeTab === 'cancelled'
                 ? 'border-rose-400 text-rose-300'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             Cancelled Interviews ({cancelled.length})
           </button>
           <button
             id="tab-diff-newly"
             onClick={() => setActiveTab('newly_scheduled')}
-            className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all ${
-              activeTab === 'newly_scheduled'
+            className={`pb-2 px-3 text-xs font-semibold border-b-2 transition-all ${activeTab === 'newly_scheduled'
                 ? 'border-blue-400 text-blue-300'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
+              }`}
           >
             Newly Scheduled ({newly_scheduled.length})
           </button>

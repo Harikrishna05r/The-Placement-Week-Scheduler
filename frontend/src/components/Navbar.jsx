@@ -36,11 +36,10 @@ export default function Navbar({
       <div className="flex items-center gap-3">
         {/* Status indicator */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-xs">
-          <span className={`w-2 h-2 rounded-full ${
-            loading ? 'bg-amber-400 animate-ping' :
-            hasSchedule ? 'bg-emerald-400' :
-            hasData ? 'bg-blue-400' : 'bg-slate-500'
-          }`} />
+          <span className={`w-2 h-2 rounded-full ${loading ? 'bg-amber-400 animate-ping' :
+              hasSchedule ? 'bg-emerald-400' :
+                hasData ? 'bg-blue-400' : 'bg-slate-500'
+            }`} />
           <span className="text-slate-300 font-medium">{status}</span>
         </div>
 

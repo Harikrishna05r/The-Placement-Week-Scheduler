@@ -94,55 +94,50 @@ export default function UnscheduledPanel({ unscheduled, onSelectInterview }) {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <button
           onClick={() => setSelectedReason('all')}
-          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${
-            selectedReason === 'all'
+          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${selectedReason === 'all'
               ? 'bg-slate-800 text-white border-indigo-500/50 shadow'
               : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200'
-          }`}
+            }`}
         >
           All ({reasonStats.all})
         </button>
 
         <button
           onClick={() => setSelectedReason('room_capacity')}
-          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${
-            selectedReason === 'room_capacity'
+          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${selectedReason === 'room_capacity'
               ? 'bg-amber-500/20 text-amber-200 border-amber-500/60 shadow'
               : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-amber-300'
-          }`}
+            }`}
         >
           Room Capacity ({reasonStats.room_capacity})
         </button>
 
         <button
           onClick={() => setSelectedReason('panel_capacity')}
-          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${
-            selectedReason === 'panel_capacity'
+          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${selectedReason === 'panel_capacity'
               ? 'bg-purple-500/20 text-purple-200 border-purple-500/60 shadow'
               : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-purple-300'
-          }`}
+            }`}
         >
           Panel Bottleneck ({reasonStats.panel_capacity})
         </button>
 
         <button
           onClick={() => setSelectedReason('student_conflict')}
-          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${
-            selectedReason === 'student_conflict'
+          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${selectedReason === 'student_conflict'
               ? 'bg-rose-500/20 text-rose-200 border-rose-500/60 shadow'
               : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-rose-300'
-          }`}
+            }`}
         >
           Student Conflicts ({reasonStats.student_conflict})
         </button>
 
         <button
           onClick={() => setSelectedReason('unknown')}
-          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${
-            selectedReason === 'unknown'
+          className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${selectedReason === 'unknown'
               ? 'bg-slate-700/60 text-slate-200 border-slate-500 shadow'
               : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200'
-          }`}
+            }`}
         >
           Multi-Constraint ({reasonStats.unknown})
         </button>
