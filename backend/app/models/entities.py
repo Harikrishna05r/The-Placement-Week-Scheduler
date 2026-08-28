@@ -27,6 +27,7 @@ class Company:
     interview_duration_min: int
     priority: int                # 1 (highest) - 3 (lowest); used when bending constraints
     shortlisted_student_ids: list[str] = field(default_factory=list)
+    earliest_start_min: int | None = None
 
 
 @dataclass
